@@ -442,6 +442,425 @@ class ConfigScreen(Screen):
         self.draw_nav_hint(surface)
 
 
+class PumpConfigScreen(Screen):
+    """Lets the user assign a liquid and volume to each pump."""
+    def __init__(self, app):
+        super().__init__(app)
+        self.pump_keys = []
+        self.index     = 0
+        self.editing   = None   # which pump is being edited
+        self.edit_row  = 0      # 0 = liquid, 1 = volume, 2 = done
+
+        # Volume options in ml (common bottle sizes)
+        self.volumes = [0, 50, 100, 200, 375, 500, 750, 1000, 1750]
+        self.vol_idx = 0
+
+        # Ingredient options from drinks.py
+        from drinks import DRINK_OPTIONS
+        self.options = [{"name": "Empty", "value": None}] + DRINK_OPTIONS
+        self.opt_idx = 0
+
+    def on_enter(self):
+        self.pump_keys = sorted(self.app.pump_manager.pumps.keys())
+        self.index     = 0
+        self.editing   = None
+
+    def _current_pump(self):
+        if not self.pump_keys:
+            return None
+        return self.app.pump_manager.pumps[self.pump_keys[self.index]]
+
+    def _start_editing(self):
+        pump = self._current_pump()
+        if not pump:
+            return
+        self.editing  = pump.key
+        self.edit_row = 0
+
+        # set selectors to current pump values
+        current_val = pump.value
+        self.opt_idx = 0
+        for i, opt in enumerate(self.options):
+            if opt["value"] == current_val:
+                self.opt_idx = i
+                break
+
+        current_vol = pump.volume_ml
+        self.vol_idx = 0
+        for i, v in enumerate(self.volumes):
+            if v == current_vol:
+                self.vol_idx = i
+                break
+
+    def _save_edit(self):
+        pump = self.app.pump_manager.pumps[self.editing]
+        pump.value     = self.options[self.opt_idx]["value"]
+        pump.volume_ml = self.volumes[self.vol_idx]
+        self.app.pump_manager.save()
+        self.editing = None
+
+    def handle_input(self, action):
+        if self.editing is None:
+            # browsing pump list
+            if action == 'up':
+                self.index = (self.index - 1) % len(self.pump_keys)
+            elif action == 'down':
+                self.index = (self.index + 1) % len(self.pump_keys)
+            elif action == 'select':
+                self._start_editing()
+            elif action == 'back':
+                self.app.set_screen('config')
+        else:
+            # editing a pump
+            if action == 'back':
+                self.editing = None
+                return
+            if action == 'up':
+                self.edit_row = (self.edit_row - 1) % 3
+            elif action == 'down':
+                self.edit_row = (self.edit_row + 1) % 3
+            elif action == 'select':
+                if self.edit_row == 0:
+                    self.opt_idx = (self.opt_idx + 1) % len(self.options)
+                elif self.edit_row == 1:
+                    self.vol_idx = (self.vol_idx + 1) % len(self.volumes)
+                elif self.edit_row == 2:
+                    self._save_edit()
+
+    def draw(self, surface):
+        surface.fill(DARK_BG)
+        self.draw_header(surface, "Configure Pumps")
+
+        if self.editing:
+            self._draw_edit(surface)
+        else:
+            self._draw_list(surface)
+
+        self.draw_nav_hint(surface)
+
+    def _draw_list(self, surface):
+        y = HEADER_H + CARD_MARGIN
+        card_h = 54
+        visible_count = 5
+        scroll = max(0, self.index - visible_count + 1)
+        keys_to_show = self.pump_keys[scroll:scroll + visible_count]
+
+        for i, key in enumerate(keys_to_show):
+            actual_i = scroll + i
+            pump     = self.app.pump_manager.pumps[key]
+            selected = (actual_i == self.index)
+            bg = CARD_HOVER if selected else CARD_BG
+
+            rect = pygame.Rect(CARD_MARGIN, y,
+                               SCREEN_W - CARD_MARGIN * 2, card_h - 4)
+            draw_rounded_rect(surface, bg, rect, CARD_RADIUS)
+
+            if selected:
+                pygame.draw.rect(surface, ACCENT,
+                                 pygame.Rect(CARD_MARGIN, y + 6,
+                                             5, card_h - 16),
+                                 border_radius=3)
+
+            # pump name
+            name_txt = self.app.font_large.render(
+                pump.name, True, TEXT_PRIMARY)
+            surface.blit(name_txt, name_txt.get_rect(
+                midleft=(CARD_MARGIN + 20, y + (card_h - 4) // 2 - 8)))
+
+            # liquid and volume
+            liquid = pump.value if pump.value else "Empty"
+            vol    = f"{pump.volume_ml}ml"
+            sub    = self.app.font_small.render(
+                f"{liquid}  ·  {vol}", True,
+                AMBER if pump.is_low() else TEXT_SECONDARY)
+            surface.blit(sub, sub.get_rect(
+                midleft=(CARD_MARGIN + 20, y + (card_h - 4) // 2 + 10)))
+
+            # low warning badge
+            if pump.is_low():
+                warn = self.app.font_small.render("LOW", True, AMBER)
+                surface.blit(warn, warn.get_rect(
+                    midright=(SCREEN_W - CARD_MARGIN - 10,
+                              y + (card_h - 4) // 2)))
+
+            y += card_h
+
+    def _draw_edit(self, surface):
+        pump = self.app.pump_manager.pumps[self.editing]
+        title = self.app.font_large.render(
+            f"Editing  {pump.name}", True, ACCENT)
+        surface.blit(title, title.get_rect(
+            midleft=(CARD_MARGIN, HEADER_H + 20)))
+
+        rows = [
+            ("Liquid",  self.options[self.opt_idx]["name"]),
+            ("Volume",  f"{self.volumes[self.vol_idx]} ml"),
+            ("",        "SAVE"),
+        ]
+
+        y = HEADER_H + 60
+        for i, (label, value) in enumerate(rows):
+            selected = (i == self.edit_row)
+            bg = CARD_HOVER if selected else CARD_BG
+            rect = pygame.Rect(CARD_MARGIN, y,
+                               SCREEN_W - CARD_MARGIN * 2, BTN_HEIGHT)
+            draw_rounded_rect(surface, ACCENT if (selected and i == 2)
+                              else bg, rect, CARD_RADIUS)
+
+            if selected and i < 2:
+                pygame.draw.rect(surface, ACCENT,
+                                 pygame.Rect(CARD_MARGIN, y + 8,
+                                             5, BTN_HEIGHT - 16),
+                                 border_radius=3)
+
+            if label:
+                lbl = self.app.font_small.render(label, True, TEXT_SECONDARY)
+                surface.blit(lbl, lbl.get_rect(
+                    midleft=(CARD_MARGIN + 20, y + BTN_HEIGHT // 2 - 10)))
+
+            val_colour = WHITE if (selected and i == 2) else TEXT_PRIMARY
+            val = self.app.font_large.render(value, True, val_colour)
+            surface.blit(val, val.get_rect(
+                midleft=(CARD_MARGIN + 20, y + BTN_HEIGHT // 2 + 10)
+                if label else rect.center))
+
+            if selected and i < 2:
+                hint = self.app.font_small.render(
+                    "← SELECT to cycle →", True, ACCENT)
+                surface.blit(hint, hint.get_rect(
+                    midright=(SCREEN_W - CARD_MARGIN - 10,
+                              y + BTN_HEIGHT // 2)))
+            y += BTN_HEIGHT + 10
+
+
+class CleaningScreen(Screen):
+    """Runs all pumps simultaneously to flush the tubes."""
+    def __init__(self, app):
+        super().__init__(app)
+        self.progress = 0
+        self.done     = False
+        self.started  = False
+
+    def on_enter(self):
+        self.progress = 0
+        self.done     = False
+        self.started  = False
+
+    def handle_input(self, action):
+        if not self.started and action == 'select':
+            self._start_clean()
+        elif not self.started and action == 'back':
+            self.app.set_screen('config')
+        elif self.done and action in ('select', 'back'):
+            self.app.set_screen('config')
+
+    def _start_clean(self):
+        self.started = True
+
+        def on_progress(pct):
+            self.progress = pct
+
+        def on_complete():
+            self.done = True
+
+        self.app.pump_manager.clean_all(
+            on_progress=on_progress,
+            on_complete=on_complete
+        )
+
+    def draw(self, surface):
+        surface.fill(DARK_BG)
+        self.draw_header(surface, "Clean All Pumps")
+
+        if not self.started:
+            msg = self.app.font_large.render(
+                "Hook tubes up to water first.", True, TEXT_PRIMARY)
+            msg2 = self.app.font_small.render(
+                "All pumps will run for 20 seconds.", True, TEXT_SECONDARY)
+            msg3 = self.app.font_small.render(
+                "Press SELECT to start  ·  BACK to cancel",
+                True, GREY)
+            surface.blit(msg,  msg.get_rect(center=(SCREEN_W // 2, 200)))
+            surface.blit(msg2, msg2.get_rect(center=(SCREEN_W // 2, 245)))
+            surface.blit(msg3, msg3.get_rect(center=(SCREEN_W // 2, 290)))
+            return
+
+        bar_x = CARD_MARGIN * 3
+        bar_y = 200
+        bar_w = SCREEN_W - CARD_MARGIN * 6
+        bar_h = 32
+        pygame.draw.rect(surface, CARD_BG,
+                         (bar_x, bar_y, bar_w, bar_h), border_radius=8)
+        fill_w = int(bar_w * self.progress / 100)
+        if fill_w > 0:
+            colour = GREEN if self.done else ACCENT
+            pygame.draw.rect(surface, colour,
+                             (bar_x, bar_y, fill_w, bar_h), border_radius=8)
+
+        pct = self.app.font_large.render(
+            f"{self.progress}%", True, TEXT_PRIMARY)
+        surface.blit(pct, pct.get_rect(center=(SCREEN_W // 2, 260)))
+
+        if self.done:
+            done = self.app.font_large.render(
+                "Cleaning complete!", True, GREEN)
+            surface.blit(done, done.get_rect(center=(SCREEN_W // 2, 320)))
+            hint = self.app.font_small.render(
+                "Press SELECT to return", True, GREY)
+            surface.blit(hint, hint.get_rect(
+                midbottom=(SCREEN_W // 2, SCREEN_H - 10)))
+
+
+class CustomDrinkScreen(Screen):
+    """Allows the user to create a new drink using loaded pumps."""
+    def __init__(self, app):
+        super().__init__(app)
+        self.step       = 'name'   # name → ingredients → confirm
+        self.name       = ""
+        self.ingredients= {}
+        self.pump_keys  = []
+        self.index      = 0
+        self.amounts    = [0, 15, 30, 45, 50, 60, 75, 90, 100, 120, 150, 175, 200]
+        self.amt_indices= {}
+        self.message    = ""
+
+    def on_enter(self):
+        self.step        = 'name'
+        self.name        = ""
+        self.ingredients = {}
+        self.message     = ""
+        self.pump_keys   = sorted(self.app.pump_manager.pumps.keys())
+        self.amt_indices = {k: 0 for k in self.pump_keys}
+        self.index       = 0
+
+    def handle_input(self, action):
+        if self.step == 'name':
+            # Name entry is keyboard only for now
+            # Physical button shortcut: SELECT skips to a default name
+            if action == 'select':
+                if not self.name:
+                    self.name = "My Custom Drink"
+                self.step = 'ingredients'
+            elif action == 'back':
+                self.app.set_screen('config')
+
+        elif self.step == 'ingredients':
+            if action == 'up':
+                self.index = (self.index - 1) % (len(self.pump_keys) + 1)
+            elif action == 'down':
+                self.index = (self.index + 1) % (len(self.pump_keys) + 1)
+            elif action == 'back':
+                self.step = 'name'
+            elif action == 'select':
+                if self.index < len(self.pump_keys):
+                    key = self.pump_keys[self.index]
+                    self.amt_indices[key] = (
+                        (self.amt_indices[key] + 1) % len(self.amounts))
+                else:
+                    self._save()
+
+        elif self.step == 'confirm':
+            if action in ('select', 'back'):
+                self.app.set_screen('drinks')
+
+    def _save(self):
+        ingredients = {}
+        for key in self.pump_keys:
+            pump = self.app.pump_manager.pumps[key]
+            amt  = self.amounts[self.amt_indices[key]]
+            if pump.value and amt > 0:
+                ingredients[pump.value] = amt
+
+        if not ingredients:
+            self.message = "Add at least one ingredient!"
+            return
+
+        ok, msg = self.app.drink_manager.add_drink(self.name, ingredients)
+        self.message = msg
+        if ok:
+            self.step = 'confirm'
+
+    def draw(self, surface):
+        surface.fill(DARK_BG)
+        self.draw_header(surface, "Create Custom Drink")
+
+        if self.step == 'name':
+            msg = self.app.font_large.render(
+                "Press SELECT to use default name,", True, TEXT_PRIMARY)
+            msg2 = self.app.font_small.render(
+                "or connect a keyboard to type a custom name.",
+                True, TEXT_SECONDARY)
+            name_display = self.name if self.name else "My Custom Drink"
+            name_txt = self.app.font_large.render(
+                f'"{name_display}"', True, ACCENT)
+            surface.blit(msg,       msg.get_rect(center=(SCREEN_W//2, 200)))
+            surface.blit(msg2,      msg2.get_rect(center=(SCREEN_W//2, 240)))
+            surface.blit(name_txt,  name_txt.get_rect(center=(SCREEN_W//2, 300)))
+
+        elif self.step == 'ingredients':
+            y = HEADER_H + 10
+            card_h = 46
+            visible = 6
+            scroll  = max(0, self.index - visible + 1)
+
+            keys_show = self.pump_keys[scroll:scroll + visible]
+            for i, key in enumerate(keys_show):
+                actual_i = scroll + i
+                pump     = self.app.pump_manager.pumps[key]
+                amt      = self.amounts[self.amt_indices[key]]
+                selected = (actual_i == self.index)
+                bg = CARD_HOVER if selected else CARD_BG
+
+                rect = pygame.Rect(CARD_MARGIN, y,
+                                   SCREEN_W - CARD_MARGIN * 2, card_h - 4)
+                draw_rounded_rect(surface, bg, rect, CARD_RADIUS)
+
+                if selected:
+                    pygame.draw.rect(surface, ACCENT,
+                                     pygame.Rect(CARD_MARGIN, y + 5,
+                                                 5, card_h - 14),
+                                     border_radius=3)
+
+                liquid = pump.value if pump.value else "Empty"
+                lbl = self.app.font_small.render(
+                    f"{pump.name}  —  {liquid}", True, TEXT_PRIMARY)
+                surface.blit(lbl, lbl.get_rect(
+                    midleft=(CARD_MARGIN + 20, y + (card_h - 4) // 2)))
+
+                amt_colour = ACCENT if amt > 0 else GREY
+                amt_txt = self.app.font_large.render(
+                    f"{amt} ml", True, amt_colour)
+                surface.blit(amt_txt, amt_txt.get_rect(
+                    midright=(SCREEN_W - CARD_MARGIN - 10,
+                              y + (card_h - 4) // 2)))
+                y += card_h
+
+            # Save button
+            if self.index == len(self.pump_keys):
+                save_col = ACCENT
+            else:
+                save_col = ACCENT_DARK
+            save_rect = pygame.Rect(CARD_MARGIN, y + 4,
+                                    SCREEN_W - CARD_MARGIN * 2, 44)
+            draw_rounded_rect(surface, save_col, save_rect, CARD_RADIUS)
+            save_txt = self.app.font_large.render("SAVE DRINK", True, WHITE)
+            surface.blit(save_txt, save_txt.get_rect(center=save_rect.center))
+
+            if self.message:
+                err = self.app.font_small.render(self.message, True, AMBER)
+                surface.blit(err, err.get_rect(
+                    midbottom=(SCREEN_W // 2, SCREEN_H - 10)))
+
+        elif self.step == 'confirm':
+            msg = self.app.font_large.render(
+                f'"{self.name}" saved!', True, GREEN)
+            msg2 = self.app.font_small.render(
+                "Press SELECT to return to drink menu.", True, GREY)
+            surface.blit(msg,  msg.get_rect(center=(SCREEN_W // 2, 220)))
+            surface.blit(msg2, msg2.get_rect(center=(SCREEN_W // 2, 270)))
+
+        self.draw_nav_hint(surface)
+
 class App:
     """Main application — owns the pygame loop and all screens."""
     def __init__(self, pump_manager, drink_manager):
@@ -470,6 +889,9 @@ class App:
             'size':    SizeStrengthScreen(self),
             'pouring': PouringScreen(self),
             'config':  ConfigScreen(self),
+            'pumps':   PumpConfigScreen(self),
+            'cleaning': CleaningScreen(self),
+            'custom':  CustomDrinkScreen(self),
         }
         self.current_screen = None
         self.set_screen('drinks')
