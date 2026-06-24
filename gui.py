@@ -43,17 +43,24 @@ BTN_DOWN   = 6
 BTN_SELECT = 13
 BTN_BACK   = 19
 
-SIMULATION = True   # set False when real buttons are wired up
+SIMULATION = False
 
 try:
-    import RPi.GPIO as GPIO
-    GPIO.setmode(GPIO.BCM)
-    for pin in [BTN_UP, BTN_DOWN, BTN_SELECT, BTN_BACK]:
-        GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-except (ImportError, RuntimeError):
-    GPIO = None
+    from gpiozero import Button as GPIOButton
+    _btn_up     = GPIOButton(BTN_UP,     pull_up=True, bounce_time=0.05)
+    _btn_down   = GPIOButton(BTN_DOWN,   pull_up=True, bounce_time=0.05)
+    _btn_select = GPIOButton(BTN_SELECT, pull_up=True, bounce_time=0.05)
+    _btn_back   = GPIOButton(BTN_BACK,   pull_up=True, bounce_time=0.05)
+    GPIO_BUTTONS = {
+        'up':     _btn_up,
+        'down':   _btn_down,
+        'select': _btn_select,
+        'back':   _btn_back,
+    }
+except Exception as e:
+    print(f"GPIO buttons not available: {e}")
+    GPIO_BUTTONS = {}
     SIMULATION = True
-
 
 def draw_rounded_rect(surface, colour, rect, radius):
     pygame.draw.rect(surface, colour, rect, border_radius=radius)
@@ -897,10 +904,8 @@ class App:
         self.set_screen('drinks')
 
         # Button state for debouncing
-        self._btn_state  = {BTN_UP: False, BTN_DOWN: False,
-                            BTN_SELECT: False, BTN_BACK: False}
-        self._btn_map    = {BTN_UP: 'up', BTN_DOWN: 'down',
-                            BTN_SELECT: 'select', BTN_BACK: 'back'}
+        self._btn_state = {'up': False, 'down': False,
+                           'select': False, 'back': False}
 
         # Keyboard fallback for testing (arrow keys + enter + escape)
         self._key_map = {
@@ -918,16 +923,16 @@ class App:
         self.current_screen.on_enter()
 
     def _read_buttons(self):
-        """Polls GPIO buttons and returns any new presses."""
-        actions = []
-        if SIMULATION or not GPIO:
+            """Polls GPIO buttons and returns any new presses."""
+            actions = []
+            if SIMULATION or not GPIO_BUTTONS:
+                return actions
+            for action, btn in GPIO_BUTTONS.items():
+                pressed = btn.is_pressed
+                if pressed and not self._btn_state.get(action, False):
+                    actions.append(action)
+                self._btn_state[action] = pressed
             return actions
-        for pin, action in self._btn_map.items():
-            pressed = GPIO.input(pin) == GPIO.LOW
-            if pressed and not self._btn_state[pin]:
-                actions.append(action)
-            self._btn_state[pin] = pressed
-        return actions
 
     def run(self):
         while self.running:
@@ -956,6 +961,6 @@ class App:
             self.clock.tick(30)
 
         pygame.quit()
-        if not SIMULATION and GPIO:
-            GPIO.cleanup()
+        self.pump_manager.cleanup()
         sys.exit()
+
