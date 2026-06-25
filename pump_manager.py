@@ -31,7 +31,7 @@ class Pump:
             try:
                 # active_high=False means .on() pulls pin LOW
                 # which is correct for active-low relay/LED circuits
-                self._device = OutputDevice(pin, active_high=False,
+                self._device = OutputDevice(pin, active_high=True,
                                             initial_value=False)
             except GPIOZeroError as e:
                 print(f"Warning: could not set up {name} on pin {pin}: {e}")

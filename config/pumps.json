@@ -16,43 +16,43 @@
   "pump_3": {
     "pin": 22,
     "name": "Pump 3",
-    "value": null,
-    "volume_ml": 0,
+    "value": "rum",
+    "volume_ml": 625.0,
     "flow_rate_ml_per_sec": 1.67
   },
   "pump_4": {
     "pin": 23,
     "name": "Pump 4",
-    "value": null,
-    "volume_ml": 0,
+    "value": "coke",
+    "volume_ml": 487.5,
     "flow_rate_ml_per_sec": 1.67
   },
   "pump_5": {
     "pin": 24,
     "name": "Pump 5",
-    "value": null,
-    "volume_ml": 0,
+    "value": "vodka",
+    "volume_ml": 750,
     "flow_rate_ml_per_sec": 1.67
   },
   "pump_6": {
     "pin": 25,
     "name": "Pump 6",
-    "value": null,
-    "volume_ml": 0,
+    "value": "oj",
+    "volume_ml": 1000,
     "flow_rate_ml_per_sec": 1.67
   },
   "pump_7": {
     "pin": 12,
     "name": "Pump 7",
-    "value": null,
-    "volume_ml": 0,
+    "value": "tequila",
+    "volume_ml": 1000,
     "flow_rate_ml_per_sec": 1.67
   },
   "pump_8": {
     "pin": 16,
     "name": "Pump 8",
-    "value": null,
-    "volume_ml": 0,
+    "value": "margarita_mix",
+    "volume_ml": 1000,
     "flow_rate_ml_per_sec": 1.67
   }
 }
