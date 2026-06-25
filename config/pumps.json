@@ -45,14 +45,14 @@
     "pin": 12,
     "name": "Pump 7",
     "value": "tequila",
-    "volume_ml": 1000,
+    "volume_ml": 850.0,
     "flow_rate_ml_per_sec": 1.67
   },
   "pump_8": {
     "pin": 16,
     "name": "Pump 8",
     "value": "margarita_mix",
-    "volume_ml": 1000,
+    "volume_ml": 775.0,
     "flow_rate_ml_per_sec": 1.67
   }
 }
