@@ -1,6 +1,5 @@
 import os
 import sys
-
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 from pump_manager import PumpManager
@@ -8,7 +7,6 @@ from drinks import DrinkManager
 from settings import SettingsManager
 from fan_controller import FanController
 from web import start_web_server
-from gui import App
 
 pm = PumpManager()
 dm = DrinkManager()
@@ -22,12 +20,25 @@ fan = FanController(
 )
 fan.start()
 
-# Start web server
+# Start web server (non-blocking, runs in background thread)
 start_web_server(pm, dm, fan)
 
-# Start GUI
-app = App(pm, dm, sm)
-app.run()
+# Start GUI only if a display is available
+try:
+    from gui import App
+    app = App(pm, dm, sm)
+    print("GUI started successfully")
+    app.run()
+except Exception as e:
+    print(f"GUI not available ({e}) — running in web-only mode")
+    print("Access the interface at http://127.0.0.1:5000")
+    # Keep the process alive for the web server
+    import time
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        pass
 
 # Cleanup on exit
 fan.stop()

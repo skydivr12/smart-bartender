@@ -1438,11 +1438,11 @@ class App:
         self.pump_manager  = pump_manager
         self.drink_manager = drink_manager
         self.settings      = settings
-
-        os.environ.setdefault("SDL_VIDEODRIVER", "wayland")
-
         pygame.init()
+        if not pygame.display.get_init():
+            raise RuntimeError("No display available")
         pygame.mouse.set_visible(False)
+
         self.screen = pygame.display.set_mode(
             (SCREEN_W, SCREEN_H), pygame.NOFRAME)
         pygame.display.set_caption("Smart Bartender")
