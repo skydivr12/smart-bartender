@@ -301,7 +301,7 @@ def get_ip():
         return "unknown"
 
 
-def create_web_app(pump_manager, drink_manager):
+def create_web_app(pump_manager, drink_manager, fan_controller=None):
     app = Flask(__name__)
 
     @app.route("/")
@@ -385,12 +385,22 @@ def create_web_app(pump_manager, drink_manager):
             "message": f"Pouring {name} ({size}, {strength})..."
         })
 
+    @app.route("/api/fan")
+    def fan_status():
+        if fan_controller:
+            return jsonify(fan_controller.status())
+        return jsonify({
+            "temp_c": 0, "fan_on": False,
+            "on_temp_c": 65, "off_temp_c": 55
+        })
+
     return app
 
 
-def start_web_server(pump_manager, drink_manager, host="0.0.0.0", port=5000):
+def start_web_server(pump_manager, drink_manager,
+                     fan_controller=None, host="0.0.0.0", port=5000):
     """Starts the web server in a background thread."""
-    flask_app = create_web_app(pump_manager, drink_manager)
+    flask_app = create_web_app(pump_manager, drink_manager, fan_controller)
     ip = get_ip()
     print(f"Web interface available at:")
     print(f"  http://bartender.local:5000")
