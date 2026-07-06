@@ -54,5 +54,26 @@
     "value": "margarita_mix",
     "volume_ml": 775.0,
     "flow_rate_ml_per_sec": 1.67
+  },
+  "pump_9": {
+    "pin": 4,
+    "name": "Pump 9",
+    "value": null,
+    "volume_ml": 0,
+    "flow_rate_ml_per_sec": 1.67
+  },
+  "pump_10": {
+    "pin": 21,
+    "name": "Pump 10",
+    "value": null,
+    "volume_ml": 0,
+    "flow_rate_ml_per_sec": 1.67
+  },
+  "pump_11": {
+    "pin": 26,
+    "name": "Pump 11",
+    "value": null,
+    "volume_ml": 0,
+    "flow_rate_ml_per_sec": 1.67
   }
 }

@@ -6,6 +6,7 @@ from pump_manager import PumpManager
 from drinks import DrinkManager
 from settings import SettingsManager
 from fan_controller import FanController
+import led_controller as leds
 from web import start_web_server
 
 pm = PumpManager()
@@ -19,6 +20,9 @@ fan = FanController(
     off_temp_c=sm.get("fan_off_temp", 55)
 )
 fan.start()
+
+# LEDs — idle state on startup (no-op when LED_ENABLED = False)
+leds.idle()
 
 # Start web server (non-blocking, runs in background thread)
 start_web_server(pm, dm, fan)
@@ -41,4 +45,5 @@ except Exception as e:
         pass
 
 # Cleanup on exit
+leds.cleanup()
 fan.stop()

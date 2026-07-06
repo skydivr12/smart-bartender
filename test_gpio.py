@@ -2,14 +2,17 @@ import time
 from gpiozero import OutputDevice, Button
 
 PUMP_PINS = {
-    "pump_1": 17,
-    "pump_2": 27,
-    "pump_3": 22,
-    "pump_4": 23,
-    "pump_5": 24,
-    "pump_6": 25,
-    "pump_7": 12,
-    "pump_8": 16,
+    "pump_1":  17,
+    "pump_2":  27,
+    "pump_3":  22,
+    "pump_4":  23,
+    "pump_5":  24,
+    "pump_6":  25,
+    "pump_7":  12,
+    "pump_8":  16,
+    "pump_9":  4,
+    "pump_10": 21,
+    "pump_11": 26,
 }
 
 BUTTON_PINS = {

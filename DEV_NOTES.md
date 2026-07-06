@@ -21,9 +21,22 @@ pip install -r requirements.txt
 - Press Ctrl+C to stop
 
 ## Pi workflow
+
+### Fresh install (Raspberry Pi OS Lite)
+```bash
+git clone https://github.com/skydivr12/smart-bartender.git
+cd smart-bartender
+bash setup.sh
+```
+Installs system packages, configures the bartender.local hostname, sets up the
+`bartender` systemd service (auto-starts on boot, runs pygame via the KMSDRM
+driver since Lite has no desktop session), and starts it. See the comment
+block at the top of `setup.sh` for the curl-based one-liner.
+
+### Updating an already-deployed Pi
 ```bash
 cd ~/smart-bartender
 git pull
-python3 run.py
+sudo systemctl restart bartender
 ```
 GPIO and pygame GUI activate automatically on real hardware.

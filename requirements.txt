@@ -6,3 +6,7 @@ Jinja2==3.1.6
 MarkupSafe==3.0.3
 pygame==2.6.1
 Werkzeug==3.1.8
+# Addressable LED strip support (WS2812/NeoPixel) — Pi only, requires sudo
+# Install on Pi: sudo pip install rpi_ws281x
+# Set LED_ENABLED = True in led_controller.py to activate
+rpi_ws281x
