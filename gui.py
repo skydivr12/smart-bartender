@@ -98,6 +98,7 @@ def get_cpu_temp():
 class Screen:
     def __init__(self, app):
         self.app = app
+        self._hitboxes = []
 
     def on_enter(self):
         pass
@@ -108,6 +109,26 @@ class Screen:
     def draw(self, surface):
         pass
 
+    # ── Touch support ──────────────────────
+    # Screens rebuild self._hitboxes every draw() call: call
+    # clear_hitboxes() first, then add_hitbox() next to each rect
+    # that's already being drawn. App dispatches raw touch/mouse
+    # events to handle_touch(), which hit-tests against this list
+    # and reuses the normal handle_input() logic. Purely additive -
+    # physical buttons and keyboard keep working unchanged.
+    def clear_hitboxes(self):
+        self._hitboxes = []
+
+    def add_hitbox(self, rect, callback):
+        self._hitboxes.append((rect, callback))
+
+    def handle_touch(self, pos):
+        for rect, callback in reversed(self._hitboxes):
+            if rect.collidepoint(pos):
+                callback()
+                return True
+        return False
+
     def draw_header(self, surface, title, show_back=True):
         pygame.draw.rect(surface, CARD_BG,
                          pygame.Rect(0, 0, SCREEN_W, HEADER_H))
@@ -117,6 +138,10 @@ class Screen:
             hint = self.app.font_small.render("[ BACK ]", True, TEXT_SECONDARY)
             surface.blit(hint, hint.get_rect(
                 midright=(SCREEN_W - 20, HEADER_H // 2)))
+            # generous tap target - the whole right side of the header
+            self.add_hitbox(
+                pygame.Rect(SCREEN_W - 170, 0, 170, HEADER_H),
+                lambda: self.handle_input('back'))
 
     def draw_footer(self, surface):
         """Persistent footer showing web address and temperature."""
@@ -291,8 +316,13 @@ class DrinkSelectScreen(Screen):
         elif self.index >= self.scroll_off + self.cards_visible:
             self.scroll_off = self.index - self.cards_visible + 1
 
+    def _tap_drink(self, i):
+        self.index = i
+        self.handle_input('select')
+
     def draw(self, surface):
         surface.fill(DARK_BG)
+        self.clear_hitboxes()
         self.draw_header(surface, "🍹  Smart Bartender", show_back=False)
 
         if not self.drinks:
@@ -302,6 +332,10 @@ class DrinkSelectScreen(Screen):
                 "Configure pumps first  →  press SELECT", True, GREY)
             surface.blit(msg,  msg.get_rect(center=(SCREEN_W // 2, 200)))
             surface.blit(msg2, msg2.get_rect(center=(SCREEN_W // 2, 245)))
+            self.add_hitbox(
+                pygame.Rect(0, HEADER_H, SCREEN_W,
+                            SCREEN_H - HEADER_H - FOOTER_H),
+                lambda: self.handle_input('select'))
             self.draw_footer(surface)
             return
 
@@ -333,6 +367,7 @@ class DrinkSelectScreen(Screen):
                 midleft=(CARD_MARGIN + 20, y + card_h // 2 - 10)))
             surface.blit(sub, sub.get_rect(
                 midleft=(CARD_MARGIN + 20, y + card_h // 2 + 12)))
+            self.add_hitbox(rect, lambda i=actual_i: self._tap_drink(i))
             y += card_h
 
         # Settings button at bottom of list
@@ -354,6 +389,7 @@ class DrinkSelectScreen(Screen):
                 AMBER if selected else TEXT_SECONDARY)
             surface.blit(lbl, lbl.get_rect(
                 midleft=(CARD_MARGIN + 20, y + (card_h - 6) // 2)))
+            self.add_hitbox(rect, lambda i=settings_i: self._tap_drink(i))
 
         # scroll indicator
         if total_items > self.cards_visible:
@@ -416,8 +452,13 @@ class SizeStrengthScreen(Screen):
         self.app.pour_drink_name  = drink["name"]
         self.app.set_screen('pouring')
 
+    def _tap_row(self, i):
+        self.row = i
+        self.handle_input('select')
+
     def draw(self, surface):
         surface.fill(DARK_BG)
+        self.clear_hitboxes()
         drink = self.app.selected_drink
         self.draw_header(surface, drink["name"] if drink else "")
 
@@ -450,6 +491,7 @@ class SizeStrengthScreen(Screen):
                 surface.blit(hint, hint.get_rect(
                     midright=(SCREEN_W - CARD_MARGIN - 10,
                               y + BTN_HEIGHT // 2)))
+            self.add_hitbox(rect, lambda i=i: self._tap_row(i))
             y += BTN_HEIGHT + 10
 
         y += 10
@@ -459,6 +501,7 @@ class SizeStrengthScreen(Screen):
         draw_rounded_rect(surface, colour, pour_rect, CARD_RADIUS)
         pour_lbl = self.app.font_large.render("POUR DRINK", True, WHITE)
         surface.blit(pour_lbl, pour_lbl.get_rect(center=pour_rect.center))
+        self.add_hitbox(pour_rect, lambda: self._tap_row(2))
 
         self.draw_nav_hint(surface)
         self.draw_footer(surface)
@@ -500,6 +543,7 @@ class PouringScreen(Screen):
 
     def draw(self, surface):
         surface.fill(DARK_BG)
+        self.clear_hitboxes()
         name = self.app.pour_drink_name or "Drink"
         self.draw_header(surface, f"Pouring  {name}...", show_back=False)
 
@@ -532,6 +576,10 @@ class PouringScreen(Screen):
                 "Press SELECT to return to menu", True, GREY)
             surface.blit(hint, hint.get_rect(
                 midbottom=(SCREEN_W // 2, SCREEN_H - FOOTER_H - 10)))
+            self.add_hitbox(
+                pygame.Rect(0, HEADER_H, SCREEN_W,
+                            SCREEN_H - HEADER_H - FOOTER_H),
+                lambda: self.handle_input('select'))
 
         self.draw_footer(surface)
 
@@ -581,8 +629,13 @@ class ConfigScreen(Screen):
             elif choice == "Back to Drinks":
                 self.app.set_screen('drinks')
 
+    def _tap_option(self, i):
+        self.index = i
+        self.handle_input('select')
+
     def draw(self, surface):
         surface.fill(DARK_BG)
+        self.clear_hitboxes()
         self.draw_header(surface, "Settings")
 
         y      = HEADER_H + CARD_MARGIN
@@ -602,6 +655,7 @@ class ConfigScreen(Screen):
             lbl = self.app.font_large.render(opt, True, TEXT_PRIMARY)
             surface.blit(lbl, lbl.get_rect(
                 midleft=(CARD_MARGIN + 20, y + (card_h - 4) // 2)))
+            self.add_hitbox(rect, lambda i=i: self._tap_option(i))
             y += card_h
 
         self.draw_nav_hint(surface)
@@ -683,8 +737,17 @@ class PumpConfigScreen(Screen):
                 elif self.edit_row == 2:
                     self._save_edit()
 
+    def _tap_pump_row(self, i):
+        self.index = i
+        self.handle_input('select')
+
+    def _tap_edit_row(self, i):
+        self.edit_row = i
+        self.handle_input('select')
+
     def draw(self, surface):
         surface.fill(DARK_BG)
+        self.clear_hitboxes()
         self.draw_header(surface, "Configure Pumps")
         if self.editing:
             self._draw_edit(surface)
@@ -727,6 +790,7 @@ class PumpConfigScreen(Screen):
                 surface.blit(warn, warn.get_rect(
                     midright=(SCREEN_W - CARD_MARGIN - 10,
                               y + (card_h - 4) // 2)))
+            self.add_hitbox(rect, lambda i=actual_i: self._tap_pump_row(i))
             y += card_h
 
     def _draw_edit(self, surface):
@@ -772,6 +836,7 @@ class PumpConfigScreen(Screen):
                 surface.blit(hint, hint.get_rect(
                     midright=(SCREEN_W - CARD_MARGIN - 10,
                               y + BTN_HEIGHT // 2)))
+            self.add_hitbox(rect, lambda i=i: self._tap_edit_row(i))
             y += BTN_HEIGHT + 10
 
 
@@ -826,8 +891,13 @@ class PrimeScreen(Screen):
             pump._device.off()
         self.priming = False
 
+    def _tap_pump_row(self, i):
+        self.index = i
+        self.handle_input('select')
+
     def draw(self, surface):
         surface.fill(DARK_BG)
+        self.clear_hitboxes()
         self.draw_header(surface, "Prime Pump")
 
         if not self.priming:
@@ -854,6 +924,7 @@ class PrimeScreen(Screen):
                     midleft=(CARD_MARGIN + 20, y + (card_h-4)//2 - 8)))
                 surface.blit(sub, sub.get_rect(
                     midleft=(CARD_MARGIN + 20, y + (card_h-4)//2 + 10)))
+                self.add_hitbox(rect, lambda i=i: self._tap_pump_row(i))
                 y += card_h
 
             inst = self.app.font_small.render(
@@ -877,6 +948,10 @@ class PrimeScreen(Screen):
             surface.blit(liq,  liq.get_rect(center=(SCREEN_W//2, 225)))
             surface.blit(secs, secs.get_rect(center=(SCREEN_W//2, 290)))
             surface.blit(stop, stop.get_rect(center=(SCREEN_W//2, 360)))
+            self.add_hitbox(
+                pygame.Rect(0, HEADER_H, SCREEN_W,
+                            SCREEN_H - HEADER_H - FOOTER_H),
+                lambda: self.handle_input('select'))
 
         self.draw_footer(surface)
 
@@ -919,6 +994,7 @@ class CleaningScreen(Screen):
 
     def draw(self, surface):
         surface.fill(DARK_BG)
+        self.clear_hitboxes()
         self.draw_header(surface, "Clean All Pumps")
 
         if not self.started:
@@ -932,6 +1008,10 @@ class CleaningScreen(Screen):
             surface.blit(msg,  msg.get_rect(center=(SCREEN_W//2, 200)))
             surface.blit(msg2, msg2.get_rect(center=(SCREEN_W//2, 245)))
             surface.blit(msg3, msg3.get_rect(center=(SCREEN_W//2, 290)))
+            self.add_hitbox(
+                pygame.Rect(0, HEADER_H, SCREEN_W,
+                            SCREEN_H - HEADER_H - FOOTER_H),
+                lambda: self.handle_input('select'))
         else:
             bar_x  = CARD_MARGIN * 3
             bar_y  = 200
@@ -956,6 +1036,10 @@ class CleaningScreen(Screen):
                     "Press SELECT to return", True, GREY)
                 surface.blit(hint, hint.get_rect(
                     midbottom=(SCREEN_W//2, SCREEN_H - FOOTER_H - 10)))
+                self.add_hitbox(
+                    pygame.Rect(0, HEADER_H, SCREEN_W,
+                                SCREEN_H - HEADER_H - FOOTER_H),
+                    lambda: self.handle_input('select'))
 
         self.draw_footer(surface)
 
@@ -1353,8 +1437,13 @@ class CustomDrinkScreen(Screen):
         if ok:
             self.step = 'confirm'
 
+    def _tap_ingredient(self, i):
+        self.index = i
+        self.handle_input('select')
+
     def draw(self, surface):
         surface.fill(DARK_BG)
+        self.clear_hitboxes()
         self.draw_header(surface, "Create Custom Drink")
 
         if self.step == 'name':
@@ -1369,6 +1458,10 @@ class CustomDrinkScreen(Screen):
             surface.blit(msg,      msg.get_rect(center=(SCREEN_W//2, 200)))
             surface.blit(msg2,     msg2.get_rect(center=(SCREEN_W//2, 240)))
             surface.blit(name_txt, name_txt.get_rect(center=(SCREEN_W//2, 300)))
+            self.add_hitbox(
+                pygame.Rect(0, HEADER_H, SCREEN_W,
+                            SCREEN_H - HEADER_H - FOOTER_H),
+                lambda: self.handle_input('select'))
 
         elif self.step == 'ingredients':
             y      = HEADER_H + 10
@@ -1402,6 +1495,7 @@ class CustomDrinkScreen(Screen):
                 surface.blit(amt_txt, amt_txt.get_rect(
                     midright=(SCREEN_W - CARD_MARGIN - 10,
                               y + (card_h-4)//2)))
+                self.add_hitbox(rect, lambda i=actual_i: self._tap_ingredient(i))
                 y += card_h
 
             save_i    = len(self.pump_keys)
@@ -1412,6 +1506,7 @@ class CustomDrinkScreen(Screen):
             save_txt = self.app.font_large.render("SAVE DRINK", True, WHITE)
             surface.blit(save_txt,
                          save_txt.get_rect(center=save_rect.center))
+            self.add_hitbox(save_rect, lambda i=save_i: self._tap_ingredient(i))
             if self.message:
                 err = self.app.font_small.render(
                     self.message, True, AMBER)
@@ -1425,6 +1520,10 @@ class CustomDrinkScreen(Screen):
                 "Press SELECT to return to drink menu.", True, GREY)
             surface.blit(msg,  msg.get_rect(center=(SCREEN_W//2, 220)))
             surface.blit(msg2, msg2.get_rect(center=(SCREEN_W//2, 270)))
+            self.add_hitbox(
+                pygame.Rect(0, HEADER_H, SCREEN_W,
+                            SCREEN_H - HEADER_H - FOOTER_H),
+                lambda: self.handle_input('select'))
 
         self.draw_nav_hint(surface)
         self.draw_footer(surface)
@@ -1509,6 +1608,11 @@ class App:
                     action = self._key_map.get(event.key)
                     if action:
                         self.current_screen.handle_input(action)
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    # Touchscreen taps arrive as mouse events (evdev/
+                    # libinput reports the Waveshare panel as a pointer
+                    # device). event.pos is already in screen pixels.
+                    self.current_screen.handle_touch(event.pos)
                 elif event.type == pygame.USEREVENT + 1:
                     pygame.time.set_timer(pygame.USEREVENT + 1, 0)
                     self.set_screen('drinks')
