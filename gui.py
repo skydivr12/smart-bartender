@@ -1543,7 +1543,7 @@ class App:
         pygame.mouse.set_visible(False)
 
         self.screen = pygame.display.set_mode(
-            (SCREEN_W, SCREEN_H), pygame.NOFRAME)
+            (SCREEN_W, SCREEN_H), pygame.NOFRAME | pygame.FULLSCREEN)
         pygame.display.set_caption("Smart Bartender")
 
         self.font_large = pygame.font.SysFont("dejavu sans", 24, bold=True)
