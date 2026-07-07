@@ -240,7 +240,8 @@ class PinScreen(Screen):
 
     def draw(self, surface):
         surface.fill(DARK_BG)
-        self.draw_header(surface, "Enter PIN", show_back=True)
+        self.clear_hitboxes()
+        self.draw_header(surface, "Enter PIN", show_back=True, show_scroll=True)
 
         # instruction
         inst = self.app.font_small.render(
@@ -1139,14 +1140,21 @@ class ChangePinScreen(Screen):
 
     def draw(self, surface):
         surface.fill(DARK_BG)
+        self.clear_hitboxes()
         title = "Confirm New PIN" if self.stage == 'confirm' else "Enter New PIN"
-        self.draw_header(surface, title)
 
         if self.success:
+            self.draw_header(surface, title)
             msg = self.app.font_large.render("PIN changed!", True, GREEN)
             surface.blit(msg, msg.get_rect(center=(SCREEN_W//2, 240)))
+            self.add_hitbox(
+                pygame.Rect(0, HEADER_H, SCREEN_W,
+                            SCREEN_H - HEADER_H - FOOTER_H),
+                lambda: self.handle_input('select'))
             self.draw_footer(surface)
             return
+
+        self.draw_header(surface, title, show_scroll=True)
 
         inst = self.app.font_small.render(
             "▲ ▼ change digit        ● confirm digit",
@@ -1306,9 +1314,17 @@ class WifiScreen(Screen):
             if action in ('select', 'back'):
                 self.app.set_screen('config')
 
+    def _tap_network(self, i):
+        self.net_index = i
+        self.handle_input('select')
+
     def draw(self, surface):
         surface.fill(DARK_BG)
-        self.draw_header(surface, "WiFi Settings")
+        self.clear_hitboxes()
+        visible = 7
+        show_scroll = (self.stage == 'password') or \
+            (self.stage == 'select' and len(self.networks) > visible)
+        self.draw_header(surface, "WiFi Settings", show_scroll=show_scroll)
 
         if self.stage == 'scan' or self.scanning:
             msg = self.app.font_large.render(
@@ -1323,8 +1339,11 @@ class WifiScreen(Screen):
             else:
                 y      = HEADER_H + CARD_MARGIN
                 card_h = 48
-                for i, ssid in enumerate(self.networks):
-                    selected = (i == self.net_index)
+                scroll = max(0, self.net_index - visible + 1)
+                for i, ssid in enumerate(
+                        self.networks[scroll:scroll + visible]):
+                    actual_i = scroll + i
+                    selected = (actual_i == self.net_index)
                     bg       = CARD_HOVER if selected else CARD_BG
                     rect     = pygame.Rect(CARD_MARGIN, y,
                                            SCREEN_W - CARD_MARGIN * 2,
@@ -1338,6 +1357,7 @@ class WifiScreen(Screen):
                     lbl = self.app.font_large.render(ssid, True, TEXT_PRIMARY)
                     surface.blit(lbl, lbl.get_rect(
                         midleft=(CARD_MARGIN + 20, y + (card_h-4)//2)))
+                    self.add_hitbox(rect, lambda i=actual_i: self._tap_network(i))
                     y += card_h
                 inst = self.app.font_small.render(
                     "SELECT to choose network  ·  BACK to cancel",
@@ -1398,6 +1418,10 @@ class WifiScreen(Screen):
                     "Press SELECT to return", True, GREY)
                 surface.blit(hint, hint.get_rect(
                     center=(SCREEN_W//2, 290)))
+                self.add_hitbox(
+                    pygame.Rect(0, HEADER_H, SCREEN_W,
+                                SCREEN_H - HEADER_H - FOOTER_H),
+                    lambda: self.handle_input('select'))
 
         self.draw_footer(surface)
 
