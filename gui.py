@@ -164,6 +164,19 @@ class Screen:
             self.add_hitbox(up_rect, lambda: self.handle_input('up'))
             self.add_hitbox(down_rect, lambda: self.handle_input('down'))
 
+    def draw_confirm_button(self, surface, y, label="✓  ENTER",
+                            width=240, height=50):
+        """A big, obvious tap target for the 'select' action - used on
+        screens (PIN/character entry) where SELECT confirms a single
+        step rather than picking a visible list item, so there's no
+        natural row to tap instead."""
+        rect = pygame.Rect((SCREEN_W - width) // 2, y, width, height)
+        draw_rounded_rect(surface, ACCENT, rect, CARD_RADIUS)
+        lbl = self.app.font_large.render(label, True, WHITE)
+        surface.blit(lbl, lbl.get_rect(center=rect.center))
+        self.add_hitbox(rect, lambda: self.handle_input('select'))
+        return rect
+
     def draw_footer(self, surface):
         """Persistent footer showing web address and temperature."""
         pygame.draw.rect(surface, CARD_BG,
@@ -290,6 +303,7 @@ class PinScreen(Screen):
             surface.blit(pos_hint, pos_hint.get_rect(
                 center=(SCREEN_W // 2, 290)))
 
+        self.draw_confirm_button(surface, 330)
         self.draw_footer(surface)
 
 
@@ -1186,6 +1200,7 @@ class ChangePinScreen(Screen):
                 "PINs don't match — try again", True, PIN_ERROR)
             surface.blit(err, err.get_rect(center=(SCREEN_W//2, 290)))
 
+        self.draw_confirm_button(surface, 330)
         self.draw_footer(surface)
 
 
@@ -1386,6 +1401,9 @@ class WifiScreen(Screen):
             draw_rounded_rect(surface, CARD_BG, pw_bg, CARD_RADIUS)
             surface.blit(pw_txt, pw_txt.get_rect(
                 midleft=(CARD_MARGIN + 12, 242)))
+
+            self.draw_confirm_button(surface, 272, label="✓  Add Character",
+                                      width=220, height=34)
 
             inst1 = self.app.font_small.render(
                 "▲ ▼ cycle characters", True, GREY)
