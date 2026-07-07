@@ -129,11 +129,13 @@ class Screen:
                 return True
         return False
 
-    def draw_header(self, surface, title, show_back=True):
+    def draw_header(self, surface, title, show_back=True, show_scroll=False):
         pygame.draw.rect(surface, CARD_BG,
                          pygame.Rect(0, 0, SCREEN_W, HEADER_H))
         txt = self.app.font_large.render(title, True, TEXT_PRIMARY)
         surface.blit(txt, txt.get_rect(midleft=(20, HEADER_H // 2)))
+
+        right_edge = SCREEN_W
         if show_back:
             hint = self.app.font_small.render("[ BACK ]", True, TEXT_SECONDARY)
             surface.blit(hint, hint.get_rect(
@@ -142,6 +144,25 @@ class Screen:
             self.add_hitbox(
                 pygame.Rect(SCREEN_W - 170, 0, 170, HEADER_H),
                 lambda: self.handle_input('back'))
+            right_edge = SCREEN_W - 180  # leave a gap before the back zone
+
+        # Tappable scroll buttons for screens/states with more list items
+        # than fit on screen - taps just call handle_input('up'/'down'),
+        # the exact same path the physical buttons use, so behavior is
+        # identical either way. Shown only when there's something to scroll.
+        if show_scroll:
+            btn_w, btn_h, gap = 40, 40, 6
+            btn_y = (HEADER_H - btn_h) // 2
+            down_rect = pygame.Rect(right_edge - btn_w, btn_y, btn_w, btn_h)
+            up_rect   = pygame.Rect(right_edge - btn_w * 2 - gap, btn_y, btn_w, btn_h)
+            draw_rounded_rect(surface, CARD_HOVER, up_rect, 8)
+            draw_rounded_rect(surface, CARD_HOVER, down_rect, 8)
+            up_lbl   = self.app.font_large.render("▲", True, TEXT_PRIMARY)
+            down_lbl = self.app.font_large.render("▼", True, TEXT_PRIMARY)
+            surface.blit(up_lbl, up_lbl.get_rect(center=up_rect.center))
+            surface.blit(down_lbl, down_lbl.get_rect(center=down_rect.center))
+            self.add_hitbox(up_rect, lambda: self.handle_input('up'))
+            self.add_hitbox(down_rect, lambda: self.handle_input('down'))
 
     def draw_footer(self, surface):
         """Persistent footer showing web address and temperature."""
@@ -323,7 +344,9 @@ class DrinkSelectScreen(Screen):
     def draw(self, surface):
         surface.fill(DARK_BG)
         self.clear_hitboxes()
-        self.draw_header(surface, "🍹  Smart Bartender", show_back=False)
+        total_items = len(self.drinks) + 1
+        self.draw_header(surface, "🍹  Smart Bartender", show_back=False,
+                          show_scroll=(total_items > self.cards_visible))
 
         if not self.drinks:
             msg  = self.app.font_large.render(
@@ -748,7 +771,8 @@ class PumpConfigScreen(Screen):
     def draw(self, surface):
         surface.fill(DARK_BG)
         self.clear_hitboxes()
-        self.draw_header(surface, "Configure Pumps")
+        show_scroll = (not self.editing) and len(self.pump_keys) > 5
+        self.draw_header(surface, "Configure Pumps", show_scroll=show_scroll)
         if self.editing:
             self._draw_edit(surface)
         else:
@@ -898,15 +922,21 @@ class PrimeScreen(Screen):
     def draw(self, surface):
         surface.fill(DARK_BG)
         self.clear_hitboxes()
-        self.draw_header(surface, "Prime Pump")
+        show_scroll = (not self.priming) and len(self.pump_keys) > 5
+        self.draw_header(surface, "Prime Pump", show_scroll=show_scroll)
 
         if not self.priming:
-            # pump selector
-            y      = HEADER_H + CARD_MARGIN
-            card_h = 54
-            for i, key in enumerate(self.pump_keys):
+            # pump selector - windowed to whatever fits on screen, keeping
+            # the selected pump in view (same pattern as PumpConfigScreen).
+            y             = HEADER_H + CARD_MARGIN
+            card_h        = 54
+            visible_count = 5
+            scroll        = max(0, self.index - visible_count + 1)
+            for i, key in enumerate(
+                    self.pump_keys[scroll:scroll + visible_count]):
+                actual_i = scroll + i
                 pump     = self.app.pump_manager.pumps[key]
-                selected = (i == self.index)
+                selected = (actual_i == self.index)
                 bg       = CARD_HOVER if selected else CARD_BG
                 rect     = pygame.Rect(CARD_MARGIN, y,
                                        SCREEN_W - CARD_MARGIN * 2, card_h - 4)
@@ -924,7 +954,7 @@ class PrimeScreen(Screen):
                     midleft=(CARD_MARGIN + 20, y + (card_h-4)//2 - 8)))
                 surface.blit(sub, sub.get_rect(
                     midleft=(CARD_MARGIN + 20, y + (card_h-4)//2 + 10)))
-                self.add_hitbox(rect, lambda i=i: self._tap_pump_row(i))
+                self.add_hitbox(rect, lambda i=actual_i: self._tap_pump_row(i))
                 y += card_h
 
             inst = self.app.font_small.render(
@@ -1444,7 +1474,8 @@ class CustomDrinkScreen(Screen):
     def draw(self, surface):
         surface.fill(DARK_BG)
         self.clear_hitboxes()
-        self.draw_header(surface, "Create Custom Drink")
+        show_scroll = (self.step == 'ingredients') and len(self.pump_keys) > 6
+        self.draw_header(surface, "Create Custom Drink", show_scroll=show_scroll)
 
         if self.step == 'name':
             msg  = self.app.font_large.render(
