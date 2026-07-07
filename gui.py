@@ -127,6 +127,10 @@ class Screen:
             if rect.collidepoint(pos):
                 callback()
                 return True
+        # Nothing matched - log it so kiosk.log shows exactly where taps
+        # are landing if something still isn't responding on-device.
+        print(f"[touch] no hitbox matched tap at {pos} on "
+              f"{type(self).__name__} ({len(self._hitboxes)} hitboxes)")
         return False
 
     def draw_header(self, surface, title, show_back=True, show_scroll=False):
@@ -865,10 +869,12 @@ class PumpConfigScreen(Screen):
                     midleft=(CARD_MARGIN + 20, y + BTN_HEIGHT // 2 - 10)))
             val_col = WHITE if (selected and is_save) else TEXT_PRIMARY
             val     = self.app.font_large.render(value, True, val_col)
-            surface.blit(val, val.get_rect(
-                center=rect.center if is_save else None,
-                midleft=None if is_save else (
-                    CARD_MARGIN + 20, y + BTN_HEIGHT // 2 + 10)))
+            if is_save:
+                val_rect = val.get_rect(center=rect.center)
+            else:
+                val_rect = val.get_rect(
+                    midleft=(CARD_MARGIN + 20, y + BTN_HEIGHT // 2 + 10))
+            surface.blit(val, val_rect)
             if selected and not is_save:
                 hint = self.app.font_small.render(
                     "← SELECT to cycle →", True, ACCENT)

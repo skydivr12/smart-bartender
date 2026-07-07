@@ -284,7 +284,11 @@ while true; do
     fi
     {
         echo "=== $(date) : starting run.py ==="
-        python3 run.py
+        # -u: unbuffered stdout/stderr. Without it, Python fully buffers
+        # output when it's not attached to a real terminal (exactly the
+        # case here), so error messages can sit invisible in memory for
+        # as long as the process stays alive instead of reaching this log.
+        python3 -u run.py
         echo "=== $(date) : run.py exited, restarting in 2s ==="
     } >> "$LOG" 2>&1
     sleep 2

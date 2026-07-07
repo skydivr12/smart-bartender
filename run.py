@@ -27,12 +27,18 @@ leds.idle()
 # Start web server (non-blocking, runs in background thread)
 start_web_server(pm, dm, fan)
 
-# Start GUI only if a display is available
+# Start GUI only if a display is available. Only App(...)'s construction is
+# guarded here - that's where pygame's display init fails if there's truly
+# no display (the legitimate "run headless" case). app.run() is NOT inside
+# this try: if the GUI crashes after it's already up and running, we want
+# that to propagate as a real, visible crash (full traceback in the log,
+# process exits, kiosk_launch.sh restarts it) rather than silently falling
+# into an infinite web-only loop with no indication anything went wrong -
+# that's exactly what masked the pump-editing crash and left the screen
+# frozen with zero feedback.
 try:
     from gui import App
     app = App(pm, dm, sm)
-    print("GUI started successfully")
-    app.run()
 except Exception as e:
     print(f"GUI not available ({e}) — running in web-only mode")
     print("Access the interface at http://127.0.0.1:5000")
@@ -43,6 +49,9 @@ except Exception as e:
             time.sleep(1)
     except KeyboardInterrupt:
         pass
+else:
+    print("GUI started successfully")
+    app.run()
 
 # Cleanup on exit
 leds.cleanup()
