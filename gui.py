@@ -1549,7 +1549,8 @@ class CustomDrinkScreen(Screen):
     def draw(self, surface):
         surface.fill(DARK_BG)
         self.clear_hitboxes()
-        show_scroll = (self.step == 'ingredients') and len(self.pump_keys) > 6
+        show_scroll = self.step == 'name' or \
+            (self.step == 'ingredients' and len(self.pump_keys) > 6)
         self.draw_header(surface, "Create Custom Drink", show_scroll=show_scroll)
 
         if self.step == 'name':
