@@ -169,16 +169,22 @@ class Screen:
             self.add_hitbox(down_rect, lambda: self.handle_input('down'))
 
     def draw_confirm_button(self, surface, y, label="✓  ENTER",
-                            width=240, height=50):
+                            width=240, height=50, action=None):
         """A big, obvious tap target for the 'select' action - used on
         screens (PIN/character entry) where SELECT confirms a single
         step rather than picking a visible list item, so there's no
-        natural row to tap instead."""
+        natural row to tap instead.
+
+        By default the button calls handle_input('select'), same as the
+        physical SELECT button. Pass `action` (a no-arg callable) to
+        make the button do something else instead - e.g. a "done"
+        button on a screen where SELECT already means "add character"."""
         rect = pygame.Rect((SCREEN_W - width) // 2, y, width, height)
         draw_rounded_rect(surface, ACCENT, rect, CARD_RADIUS)
         lbl = self.app.font_large.render(label, True, WHITE)
         surface.blit(lbl, lbl.get_rect(center=rect.center))
-        self.add_hitbox(rect, lambda: self.handle_input('select'))
+        callback = action if action else (lambda: self.handle_input('select'))
+        self.add_hitbox(rect, callback)
         return rect
 
     def draw_footer(self, surface):
@@ -1059,6 +1065,9 @@ class CleaningScreen(Screen):
             surface.blit(msg,  msg.get_rect(center=(SCREEN_W//2, 200)))
             surface.blit(msg2, msg2.get_rect(center=(SCREEN_W//2, 245)))
             surface.blit(msg3, msg3.get_rect(center=(SCREEN_W//2, 290)))
+            self.draw_confirm_button(surface, 320, label="✓  START")
+            # Also let a tap anywhere in the content area start cleaning,
+            # in case the button feels small on the touch panel.
             self.add_hitbox(
                 pygame.Rect(0, HEADER_H, SCREEN_W,
                             SCREEN_H - HEADER_H - FOOTER_H),
@@ -1082,11 +1091,8 @@ class CleaningScreen(Screen):
             if self.done:
                 done = self.app.font_large.render(
                     "Cleaning complete!", True, GREEN)
-                surface.blit(done, done.get_rect(center=(SCREEN_W//2, 320)))
-                hint = self.app.font_small.render(
-                    "Press SELECT to return", True, GREY)
-                surface.blit(hint, hint.get_rect(
-                    midbottom=(SCREEN_W//2, SCREEN_H - FOOTER_H - 10)))
+                surface.blit(done, done.get_rect(center=(SCREEN_W//2, 300)))
+                self.draw_confirm_button(surface, 335, label="✓  DONE")
                 self.add_hitbox(
                     pygame.Rect(0, HEADER_H, SCREEN_W,
                                 SCREEN_H - HEADER_H - FOOTER_H),
@@ -1454,10 +1460,19 @@ class WifiScreen(Screen):
 #  Custom drink screen
 # ─────────────────────────────────────────
 class CustomDrinkScreen(Screen):
+    # Name entry works the same way as WifiScreen's password entry:
+    # UP/DOWN cycles through this character set, SELECT (or the
+    # "Add Character" button) appends the highlighted character, BACK
+    # deletes the last character (or cancels if the name is empty).
+    NAME_CHARS = (" abcdefghijklmnopqrstuvwxyz"
+                  "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                  "0123456789'-")
+
     def __init__(self, app):
         super().__init__(app)
         self.step        = 'name'
         self.name        = ""
+        self.char_index  = 0
         self.ingredients = {}
         self.pump_keys   = []
         self.index       = 0
@@ -1468,20 +1483,32 @@ class CustomDrinkScreen(Screen):
     def on_enter(self):
         self.step        = 'name'
         self.name        = ""
+        self.char_index  = 0
         self.ingredients = {}
         self.message     = ""
         self.pump_keys   = sorted(self.app.pump_manager.pumps.keys())
         self.amt_indices = {k: 0 for k in self.pump_keys}
         self.index       = 0
 
+    def _finish_name(self):
+        if not self.name:
+            self.name = "My Custom Drink"
+        self.step = 'ingredients'
+
     def handle_input(self, action):
         if self.step == 'name':
-            if action == 'select':
-                if not self.name:
-                    self.name = "My Custom Drink"
-                self.step = 'ingredients'
+            if action == 'up':
+                self.char_index = (self.char_index + 1) % len(self.NAME_CHARS)
+            elif action == 'down':
+                self.char_index = (self.char_index - 1) % len(self.NAME_CHARS)
+            elif action == 'select':
+                self.name += self.NAME_CHARS[self.char_index]
+                self.char_index = 0
             elif action == 'back':
-                self.app.set_screen('config')
+                if self.name:
+                    self.name = self.name[:-1]
+                else:
+                    self.app.set_screen('config')
         elif self.step == 'ingredients':
             if action == 'up':
                 self.index = (self.index - 1) % (len(self.pump_keys) + 1)
@@ -1526,21 +1553,36 @@ class CustomDrinkScreen(Screen):
         self.draw_header(surface, "Create Custom Drink", show_scroll=show_scroll)
 
         if self.step == 'name':
-            msg  = self.app.font_large.render(
-                "Press SELECT to use default name,", True, TEXT_PRIMARY)
-            msg2 = self.app.font_small.render(
-                "or connect a keyboard to type a name.",
-                True, TEXT_SECONDARY)
-            name_display = self.name if self.name else "My Custom Drink"
-            name_txt = self.app.font_large.render(
-                f'"{name_display}"', True, ACCENT)
-            surface.blit(msg,      msg.get_rect(center=(SCREEN_W//2, 200)))
-            surface.blit(msg2,     msg2.get_rect(center=(SCREEN_W//2, 240)))
-            surface.blit(name_txt, name_txt.get_rect(center=(SCREEN_W//2, 300)))
-            self.add_hitbox(
-                pygame.Rect(0, HEADER_H, SCREEN_W,
-                            SCREEN_H - HEADER_H - FOOTER_H),
-                lambda: self.handle_input('select'))
+            title = self.app.font_large.render(
+                "Enter drink name:", True, TEXT_PRIMARY)
+            surface.blit(title, title.get_rect(center=(SCREEN_W//2, 90)))
+
+            cur_char = self.NAME_CHARS[self.char_index]
+            char_display = self.app.font_large.render(
+                f"Character:  '{cur_char}'", True, ACCENT)
+            surface.blit(char_display, char_display.get_rect(
+                center=(SCREEN_W//2, 140)))
+
+            name_str  = self.name + "_"
+            name_txt  = self.app.font_large.render(name_str, True, GREEN)
+            name_bg   = pygame.Rect(CARD_MARGIN, 170,
+                                    SCREEN_W - CARD_MARGIN * 2, 44)
+            draw_rounded_rect(surface, CARD_BG, name_bg, CARD_RADIUS)
+            surface.blit(name_txt, name_txt.get_rect(
+                midleft=(CARD_MARGIN + 12, 192)))
+
+            self.draw_confirm_button(surface, 224, label="✓  Add Character",
+                                      width=220, height=34)
+            self.draw_confirm_button(surface, 268, label="→  Use This Name",
+                                      width=240, height=44,
+                                      action=self._finish_name)
+
+            inst1 = self.app.font_small.render(
+                "▲ ▼ cycle characters", True, GREY)
+            inst2 = self.app.font_small.render(
+                "● add character   ✕ delete / cancel", True, GREY)
+            surface.blit(inst1, inst1.get_rect(center=(SCREEN_W//2, 336)))
+            surface.blit(inst2, inst2.get_rect(center=(SCREEN_W//2, 358)))
 
         elif self.step == 'ingredients':
             y      = HEADER_H + 10
