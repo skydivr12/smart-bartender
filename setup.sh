@@ -309,13 +309,48 @@ EOF
 success "Wrote $AUTOSTART_FILE"
 
 # ---------------------------------------------------------------------------
-# Step 10: Verify — run.py already falls back to web-only mode when no
+# Step 10: Power button service — a completely separate systemd unit from
+#   the bartender app (no dependency on it either direction), so a hung or
+#   crashed kiosk can't take the button down with it. Watches GPIO3
+#   (physical pin 5); wire a momentary switch between pin 5 and pin 6
+#   (GND) — GPIO3 has a built-in pull-up, no resistor needed.
+#     3 clicks within 2s -> reboot
+#     5 clicks within 3s -> safe shutdown (poweroff)
+#   After a shutdown, the same button powers the Pi back on again — GPIO3
+#   wake-from-halt is a bootloader default on current Pi firmware, no
+#   EEPROM changes needed (confirmed working this way on the
+#   waiver-video-signage project, same pin, same click pattern).
+#   See power_button.py for the click-detection logic.
+# ---------------------------------------------------------------------------
+header "Step 10: Installing power button service"
+POWER_SERVICE="/etc/systemd/system/bartender-power.service"
+sudo tee "$POWER_SERVICE" >/dev/null <<EOF
+[Unit]
+Description=Smart Bartender power button (independent of the bartender app)
+After=multi-user.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 $INSTALL_DIR/power_button.py
+Restart=always
+RestartSec=2
+User=root
+
+[Install]
+WantedBy=multi-user.target
+EOF
+sudo systemctl daemon-reload
+sudo systemctl enable --now bartender-power.service
+success "bartender-power.service installed and running"
+
+# ---------------------------------------------------------------------------
+# Step 11: Verify — run.py already falls back to web-only mode when no
 #   display is attached, so this SSH session can sanity-check the code runs
 #   and the web interface responds without needing the kiosk to actually be
 #   on screen yet. SDL_VIDEODRIVER=dummy keeps this check from touching the
 #   real screen even if a desktop session isn't up yet to claim it first.
 # ---------------------------------------------------------------------------
-header "Step 10: Verifying"
+header "Step 11: Verifying"
 cd "$SCRIPT_DIR"
 SDL_VIDEODRIVER=dummy python3 run.py >/tmp/bartender_verify.log 2>&1 &
 VERIFY_PID=$!
@@ -350,11 +385,17 @@ echo -e "  Install dir:  ${BLUE}$INSTALL_DIR${NC}"
 echo -e "  Autostart:    ${BLUE}$AUTOSTART_FILE${NC}"
 echo -e "  Kiosk log:    ${BLUE}$INSTALL_DIR/kiosk.log${NC}"
 echo -e "  Web UI:       ${BLUE}http://${TARGET_HOSTNAME}.local:5000${NC} (also reachable by IP)"
+echo -e "  Power button: ${BLUE}bartender-power.service${NC} — wire a momentary switch across"
+echo -e "                physical pins 5 (GPIO3) and 6 (GND). 3 clicks = reboot,"
+echo -e "                5 clicks = shutdown. Logs: journalctl -u bartender-power -f"
 echo
-echo -e "  ${YELLOW}Reboot to apply auto-login, screen blanking, and (re)launch the kiosk:${NC}"
+echo -e "  ${YELLOW}Reboot to apply auto-login and screen blanking, and (re)launch the kiosk:${NC}"
 echo -e "    sudo reboot"
 echo
 echo "  No systemd unit runs the GUI anymore — it's autostarted inside the"
 echo "  desktop session and logs to kiosk.log. Tail it with:"
 echo "    tail -f $INSTALL_DIR/kiosk.log"
+echo
+echo "  The power button service is independent of the bartender app, runs"
+echo "  as its own systemd unit, and keeps working even if the kiosk hangs."
 echo
