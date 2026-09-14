@@ -13,6 +13,11 @@ PUMP_PINS = {
     "pump_9":  4,
     "pump_10": 21,
     "pump_11": 26,
+    "pump_12": 14,
+    "pump_13": 15,
+    "pump_14": 7,
+    "pump_15": 8,
+    "pump_16": 9,
 }
 
 BUTTON_PINS = {

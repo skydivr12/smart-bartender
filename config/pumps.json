@@ -75,5 +75,40 @@
     "value": null,
     "volume_ml": 0,
     "flow_rate_ml_per_sec": 1.67
+  },
+  "pump_12": {
+    "pin": 14,
+    "name": "Pump 12",
+    "value": null,
+    "volume_ml": 0,
+    "flow_rate_ml_per_sec": 1.67
+  },
+  "pump_13": {
+    "pin": 15,
+    "name": "Pump 13",
+    "value": null,
+    "volume_ml": 0,
+    "flow_rate_ml_per_sec": 1.67
+  },
+  "pump_14": {
+    "pin": 7,
+    "name": "Pump 14",
+    "value": null,
+    "volume_ml": 0,
+    "flow_rate_ml_per_sec": 1.67
+  },
+  "pump_15": {
+    "pin": 8,
+    "name": "Pump 15",
+    "value": null,
+    "volume_ml": 0,
+    "flow_rate_ml_per_sec": 1.67
+  },
+  "pump_16": {
+    "pin": 9,
+    "name": "Pump 16",
+    "value": null,
+    "volume_ml": 0,
+    "flow_rate_ml_per_sec": 1.67
   }
 }
