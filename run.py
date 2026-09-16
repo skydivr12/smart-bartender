@@ -2,6 +2,10 @@ import os
 import sys
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
+# Prevent SDL from claiming the PWM audio hardware, which conflicts with
+# rpi_ws281x using GPIO 18 (PWM) for the LED data line.
+os.environ.setdefault('SDL_AUDIODRIVER', 'dummy')
+
 from pump_manager import PumpManager
 from drinks import DrinkManager
 from settings import SettingsManager
