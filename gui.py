@@ -645,6 +645,7 @@ class ConfigScreen(Screen):
         "Change PIN",
         "WiFi Settings",
         "Toggle LEDs",
+        "Return to Desktop",
         "Back to Drinks",
     ]
 
@@ -680,6 +681,9 @@ class ConfigScreen(Screen):
                 new_state = not leds.is_enabled()
                 leds.set_enabled(new_state)
                 self.app.settings.set("leds_enabled", new_state)
+            elif choice == "Return to Desktop":
+                leds.off()          # blank strip immediately
+                self.app.running = False   # exits the main loop → clean shutdown
             elif choice == "Back to Drinks":
                 self.app.set_screen('drinks')
 
