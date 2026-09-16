@@ -40,6 +40,8 @@ shutdown. Tighten CLICK checks below if you'd rather require an exact
 count.
 """
 
+import os
+import signal as _signal
 import subprocess
 import time
 
@@ -61,6 +63,23 @@ BOUNCE_TIME = 0.05      # debounce, matches test_gpio.py's button handling
 click_times = []
 
 
+def _signal_app_cleanup():
+    """Send SIGTERM to the bartender app so its atexit handler turns off
+    the LEDs before we cut power.  The app has ~1.5 s to finish."""
+    try:
+        result = subprocess.run(
+            ["pgrep", "-f", "python3.*run.py"],
+            capture_output=True, text=True)
+        pids = [int(p) for p in result.stdout.strip().split() if p]
+        for pid in pids:
+            os.kill(pid, _signal.SIGTERM)
+            print(f"[power-button] sent SIGTERM to bartender (pid {pid})", flush=True)
+        if pids:
+            time.sleep(1.5)   # give LEDs time to go dark
+    except Exception as e:
+        print(f"[power-button] cleanup signal failed: {e}", flush=True)
+
+
 def evaluate_sequence():
     """Called once clicking has paused. Decide what the sequence meant."""
     global click_times
@@ -72,9 +91,11 @@ def evaluate_sequence():
 
     if n >= SHUTDOWN_CLICKS and (click_times[SHUTDOWN_CLICKS - 1] - first) <= SHUTDOWN_WINDOW:
         print(f"[power-button] {n} clicks -> shutdown", flush=True)
+        _signal_app_cleanup()
         subprocess.run(["systemctl", "poweroff"], check=False)
     elif n >= REBOOT_CLICKS and (click_times[REBOOT_CLICKS - 1] - first) <= REBOOT_WINDOW:
         print(f"[power-button] {n} clicks -> reboot", flush=True)
+        _signal_app_cleanup()
         subprocess.run(["systemctl", "reboot"], check=False)
     else:
         print(f"[power-button] {n} click(s) - no pattern matched, ignoring", flush=True)
