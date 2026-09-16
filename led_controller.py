@@ -18,6 +18,35 @@ import threading
 import time
 
 # ---------------------------------------------------------------------------
+# Runtime toggle — independent of LED_ENABLED (hardware init flag).
+# Call set_enabled(False) to blank the strip without rebooting.
+# ---------------------------------------------------------------------------
+_runtime_enabled = True
+
+
+def set_enabled(state: bool):
+    """Enable or disable LEDs at runtime without touching the hardware init."""
+    global _runtime_enabled
+    _runtime_enabled = bool(state)
+    if not _runtime_enabled:
+        _stop_animation()
+        _all_off()
+    else:
+        idle()
+
+
+def _stop_animation():
+    global _current_thread
+    _stop_event.set()
+    if _current_thread and _current_thread.is_alive():
+        _current_thread.join(timeout=1.0)
+
+
+def is_enabled() -> bool:
+    return _runtime_enabled
+
+
+# ---------------------------------------------------------------------------
 # Hardware init
 # ---------------------------------------------------------------------------
 _strip = None
@@ -148,47 +177,48 @@ def _error_loop():
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+def _hw_ready():
+    return LED_ENABLED and _strip is not None
+
+
 def idle():
     """Slow colour-spectrum fade — bartender waiting for a selection."""
-    if not LED_ENABLED or _strip is None:
+    if not _hw_ready() or not _runtime_enabled:
         return
     _start_animation(_idle_loop)
 
 
 def pouring():
     """Rainbow cascade — active pour in progress."""
-    if not LED_ENABLED or _strip is None:
+    if not _hw_ready() or not _runtime_enabled:
         return
     _start_animation(_pouring_loop)
 
 
 def pour_complete():
     """Green flash for ~7 seconds — drink is ready."""
-    if not LED_ENABLED or _strip is None:
+    if not _hw_ready() or not _runtime_enabled:
         return
     _start_animation(_pour_complete_loop)
 
 
 def error():
     """Fast red flash — low volume warning or pump fault."""
-    if not LED_ENABLED or _strip is None:
+    if not _hw_ready() or not _runtime_enabled:
         return
     _start_animation(_error_loop)
 
 
 def off():
     """Stop all animations and turn LEDs off immediately."""
-    if not LED_ENABLED or _strip is None:
+    if not _hw_ready():
         return
-    global _current_thread
-    _stop_event.set()
-    if _current_thread and _current_thread.is_alive():
-        _current_thread.join(timeout=1.0)
+    _stop_animation()
     _all_off()
 
 
 def cleanup():
     """Turn off LEDs and release resources. Call on app exit."""
-    if not LED_ENABLED or _strip is None:
+    if not _hw_ready():
         return
     off()

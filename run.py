@@ -1,5 +1,7 @@
 import os
 import sys
+import signal
+import atexit
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 # Prevent SDL from claiming the PWM audio hardware, which conflicts with
@@ -25,11 +27,20 @@ fan = FanController(
 )
 fan.start()
 
-# LEDs — idle state on startup (no-op when LED_ENABLED = False)
-leds.idle()
+# Clean shutdown — turn off LEDs before the Pi powers down.
+# atexit runs on sys.exit(); SIGTERM handler triggers that on poweroff/reboot.
+def _on_exit():
+    leds.cleanup()
+    fan.stop()
+
+atexit.register(_on_exit)
+signal.signal(signal.SIGTERM, lambda sig, frame: sys.exit(0))
+
+# Apply saved LED preference
+leds.set_enabled(sm.get("leds_enabled", True))
 
 # Start web server (non-blocking, runs in background thread)
-start_web_server(pm, dm, fan)
+start_web_server(pm, dm, fan, sm)
 
 # Start GUI only if a display is available. Only App(...)'s construction is
 # guarded here - that's where pygame's display init fails if there's truly
@@ -57,6 +68,4 @@ else:
     print("GUI started successfully")
     app.run()
 
-# Cleanup on exit
-leds.cleanup()
-fan.stop()
+# Cleanup is handled by the atexit handler registered above.

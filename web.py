@@ -114,6 +114,16 @@ HTML = """
 <h2>Drink Menu</h2>
 <div id="drink-list">Loading...</div>
 
+<!-- ── LEDS ──────────────────────────────── -->
+<h2>LED Strip</h2>
+<div class="card">
+  <span class="card-left">
+    <div class="card-title">Ambient Lighting</div>
+    <div class="card-sub">Toggle the LED strip on or off</div>
+  </span>
+  <button id="led-toggle" onclick="toggleLeds()">...</button>
+</div>
+
 <!-- ── ADD DRINK ─────────────────────────── -->
 <h2>Add Custom Drink</h2>
 <div class="card" style="flex-direction:column;align-items:stretch;gap:8px">
@@ -282,7 +292,21 @@ async function pourDrink() {
   showMsg(r.message, r.ok);
 }
 
+async function loadLeds() {
+  const r = await api('leds');
+  const btn = document.getElementById('led-toggle');
+  btn.textContent = r.enabled ? 'Turn Off LEDs' : 'Turn On LEDs';
+  btn.className   = r.enabled ? 'danger' : 'success';
+}
+
+async function toggleLeds() {
+  const r = await api('leds/toggle', 'POST');
+  showMsg(r.message, r.ok);
+  loadLeds();
+}
+
 loadAll();
+loadLeds();
 </script>
 </body>
 </html>
@@ -301,7 +325,8 @@ def get_ip():
         return "unknown"
 
 
-def create_web_app(pump_manager, drink_manager, fan_controller=None):
+def create_web_app(pump_manager, drink_manager, fan_controller=None,
+                   settings_manager=None):
     app = Flask(__name__)
 
     @app.route("/")
@@ -394,13 +419,31 @@ def create_web_app(pump_manager, drink_manager, fan_controller=None):
             "on_temp_c": 65, "off_temp_c": 55
         })
 
+    @app.route("/api/leds")
+    def leds_status():
+        import led_controller as leds
+        return jsonify({"enabled": leds.is_enabled()})
+
+    @app.route("/api/leds/toggle", methods=["POST"])
+    def leds_toggle():
+        import led_controller as leds
+        new_state = not leds.is_enabled()
+        leds.set_enabled(new_state)
+        if settings_manager:
+            settings_manager.set("leds_enabled", new_state)
+        state_str = "on" if new_state else "off"
+        return jsonify({"ok": True, "enabled": new_state,
+                        "message": f"LEDs turned {state_str}."})
+
     return app
 
 
 def start_web_server(pump_manager, drink_manager,
-                     fan_controller=None, host="0.0.0.0", port=5000):
+                     fan_controller=None, settings_manager=None,
+                     host="0.0.0.0", port=5000):
     """Starts the web server in a background thread."""
-    flask_app = create_web_app(pump_manager, drink_manager, fan_controller)
+    flask_app = create_web_app(pump_manager, drink_manager,
+                               fan_controller, settings_manager)
     ip = get_ip()
     print(f"Web interface available at:")
     print(f"  http://bartender.local:5000")

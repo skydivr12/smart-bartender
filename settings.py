@@ -4,11 +4,12 @@ import os
 SETTINGS_PATH = "config/settings.json"
 
 DEFAULTS = {
-    "pin":          "1234",
-    "fan_pin":      20,
-    "fan_on_temp":  65,
-    "fan_off_temp": 55,
-    "prime_duration": 10
+    "pin":           "1234",
+    "fan_pin":       20,
+    "fan_on_temp":   65,
+    "fan_off_temp":  55,
+    "prime_duration": 10,
+    "leds_enabled":  True,
 }
 
 

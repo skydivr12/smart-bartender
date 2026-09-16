@@ -5,6 +5,7 @@ import time
 import os
 import socket
 import subprocess
+import led_controller as leds
 
 # ─────────────────────────────────────────
 #  Display settings
@@ -643,6 +644,7 @@ class ConfigScreen(Screen):
         "Add Custom Drink",
         "Change PIN",
         "WiFi Settings",
+        "Toggle LEDs",
         "Back to Drinks",
     ]
 
@@ -674,6 +676,10 @@ class ConfigScreen(Screen):
                 self.app.set_screen('change_pin')
             elif choice == "WiFi Settings":
                 self.app.set_screen('wifi')
+            elif choice == "Toggle LEDs":
+                new_state = not leds.is_enabled()
+                leds.set_enabled(new_state)
+                self.app.settings.set("leds_enabled", new_state)
             elif choice == "Back to Drinks":
                 self.app.set_screen('drinks')
 
@@ -700,7 +706,13 @@ class ConfigScreen(Screen):
                                  pygame.Rect(CARD_MARGIN, y + 6,
                                              5, card_h - 16),
                                  border_radius=3)
-            lbl = self.app.font_large.render(opt, True, TEXT_PRIMARY)
+            # Show current state for the LED toggle option
+            if opt == "Toggle LEDs":
+                state = "ON" if leds.is_enabled() else "OFF"
+                display_label = f"Toggle LEDs  [{state}]"
+            else:
+                display_label = opt
+            lbl = self.app.font_large.render(display_label, True, TEXT_PRIMARY)
             surface.blit(lbl, lbl.get_rect(
                 midleft=(CARD_MARGIN + 20, y + (card_h - 4) // 2)))
             self.add_hitbox(rect, lambda i=i: self._tap_option(i))
