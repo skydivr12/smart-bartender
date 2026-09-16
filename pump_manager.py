@@ -2,6 +2,7 @@ import json
 import os
 import threading
 import time
+import led_controller as leds
 
 SIMULATION = False
 
@@ -190,6 +191,8 @@ class PumpManager:
                 else:
                     print(f"Warning: no pump loaded with '{ingredient}'")
 
+        leds.pouring()
+
         def _wait_and_finish():
             start = time.time()
             while any(t.is_alive() for t in threads):
@@ -202,6 +205,7 @@ class PumpManager:
             if on_progress:
                 on_progress(100)
             self.save()
+            leds.pour_complete()
             if on_complete:
                 on_complete()
 
