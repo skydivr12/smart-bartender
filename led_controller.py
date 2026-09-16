@@ -4,10 +4,10 @@
 # GPIO 18 (PWM) is reserved as the data pin for the LED strip.
 # NOTE: rpi_ws281x requires the app to run as root (sudo) on real hardware.
 # =============================================================================
-LED_ENABLED = False
+LED_ENABLED = True
 
 LED_PIN        = 18    # GPIO 18 — PWM data line to LED strip
-LED_COUNT      = 30    # Number of LEDs on the strip — adjust to match yours
+LED_COUNT      = 41    # Number of LEDs on the strip
 LED_BRIGHTNESS = 128   # 0 (off) to 255 (full brightness)
 LED_FREQ_HZ    = 800000
 LED_DMA        = 10
