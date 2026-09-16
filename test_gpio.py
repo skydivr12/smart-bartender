@@ -33,7 +33,7 @@ print("Each LED will light up for 1 second in order.\n")
 pumps = {}
 for name, pin in PUMP_PINS.items():
     # active_high=False means .on() pulls LOW which lights our LEDs
-    pumps[name] = OutputDevice(pin, active_high=True, initial_value=False)
+    pumps[name] = OutputDevice(pin, active_high=False, initial_value=False)
 
 for name, device in pumps.items():
     print(f"  Testing {name}...")
