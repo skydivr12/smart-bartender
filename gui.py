@@ -648,19 +648,31 @@ class ConfigScreen(Screen):
         "Return to Desktop",
         "Back to Drinks",
     ]
+    VISIBLE = 6   # cards that fit on screen at once
 
     def __init__(self, app):
         super().__init__(app)
-        self.index = 0
+        self.index      = 0
+        self.scroll_off = 0
 
     def on_enter(self):
-        self.index = 0
+        self.index      = 0
+        self.scroll_off = 0
+
+    def _clamp_scroll(self):
+        if self.index < self.scroll_off:
+            self.scroll_off = self.index
+        elif self.index >= self.scroll_off + self.VISIBLE:
+            self.scroll_off = self.index - self.VISIBLE + 1
 
     def handle_input(self, action):
+        n = len(self.OPTIONS)
         if action == 'up':
-            self.index = (self.index - 1) % len(self.OPTIONS)
+            self.index = (self.index - 1) % n
+            self._clamp_scroll()
         elif action == 'down':
-            self.index = (self.index + 1) % len(self.OPTIONS)
+            self.index = (self.index + 1) % n
+            self._clamp_scroll()
         elif action == 'back':
             self.app.set_screen('drinks')
         elif action == 'select':
@@ -682,25 +694,29 @@ class ConfigScreen(Screen):
                 leds.set_enabled(new_state)
                 self.app.settings.set("leds_enabled", new_state)
             elif choice == "Return to Desktop":
-                leds.off()          # blank strip immediately
-                self.app.running = False   # exits the main loop → clean shutdown
+                leds.off()
+                self.app.running = False
             elif choice == "Back to Drinks":
                 self.app.set_screen('drinks')
 
     def _tap_option(self, i):
         self.index = i
+        self._clamp_scroll()
         self.handle_input('select')
 
     def draw(self, surface):
         surface.fill(DARK_BG)
         self.clear_hitboxes()
-        self.draw_header(surface, "Settings")
+        show_scroll = len(self.OPTIONS) > self.VISIBLE
+        self.draw_header(surface, "Settings", show_scroll=show_scroll)
 
         y      = HEADER_H + CARD_MARGIN
         card_h = 52
 
-        for i, opt in enumerate(self.OPTIONS):
-            selected = (i == self.index)
+        visible = self.OPTIONS[self.scroll_off:self.scroll_off + self.VISIBLE]
+        for i, opt in enumerate(visible):
+            actual_i = self.scroll_off + i
+            selected = (actual_i == self.index)
             bg       = CARD_HOVER if selected else CARD_BG
             rect     = pygame.Rect(CARD_MARGIN, y,
                                    SCREEN_W - CARD_MARGIN * 2, card_h - 4)
@@ -710,7 +726,6 @@ class ConfigScreen(Screen):
                                  pygame.Rect(CARD_MARGIN, y + 6,
                                              5, card_h - 16),
                                  border_radius=3)
-            # Show current state for the LED toggle option
             if opt == "Toggle LEDs":
                 state = "ON" if leds.is_enabled() else "OFF"
                 display_label = f"Toggle LEDs  [{state}]"
@@ -719,7 +734,7 @@ class ConfigScreen(Screen):
             lbl = self.app.font_large.render(display_label, True, TEXT_PRIMARY)
             surface.blit(lbl, lbl.get_rect(
                 midleft=(CARD_MARGIN + 20, y + (card_h - 4) // 2)))
-            self.add_hitbox(rect, lambda i=i: self._tap_option(i))
+            self.add_hitbox(rect, lambda i=actual_i: self._tap_option(i))
             y += card_h
 
         self.draw_nav_hint(surface)
