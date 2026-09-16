@@ -110,22 +110,22 @@ class PumpManager:
     CONFIG_PATH = "config/pumps.json"
 
     DEFAULT_PUMPS = {
-        "pump_1":  {"pin": 17, "name": "Pump 1",  "value": None, "volume_ml": 0},
-        "pump_2":  {"pin": 27, "name": "Pump 2",  "value": None, "volume_ml": 0},
-        "pump_3":  {"pin": 22, "name": "Pump 3",  "value": None, "volume_ml": 0},
+        "pump_1":  {"pin": 4,  "name": "Pump 1",  "value": None, "volume_ml": 0},
+        "pump_2":  {"pin": 15, "name": "Pump 2",  "value": None, "volume_ml": 0},
+        "pump_3":  {"pin": 27, "name": "Pump 3",  "value": None, "volume_ml": 0},
         "pump_4":  {"pin": 23, "name": "Pump 4",  "value": None, "volume_ml": 0},
-        "pump_5":  {"pin": 24, "name": "Pump 5",  "value": None, "volume_ml": 0},
-        "pump_6":  {"pin": 25, "name": "Pump 6",  "value": None, "volume_ml": 0},
-        "pump_7":  {"pin": 12, "name": "Pump 7",  "value": None, "volume_ml": 0},
-        "pump_8":  {"pin": 16, "name": "Pump 8",  "value": None, "volume_ml": 0},
-        "pump_9":  {"pin": 4,  "name": "Pump 9",  "value": None, "volume_ml": 0},
-        "pump_10": {"pin": 21, "name": "Pump 10", "value": None, "volume_ml": 0},
-        "pump_11": {"pin": 26, "name": "Pump 11", "value": None, "volume_ml": 0},
-        "pump_12": {"pin": 14, "name": "Pump 12", "value": None, "volume_ml": 0},
-        "pump_13": {"pin": 15, "name": "Pump 13", "value": None, "volume_ml": 0},
+        "pump_5":  {"pin": 14, "name": "Pump 5",  "value": None, "volume_ml": 0},
+        "pump_6":  {"pin": 17, "name": "Pump 6",  "value": None, "volume_ml": 0},
+        "pump_7":  {"pin": 22, "name": "Pump 7",  "value": None, "volume_ml": 0},
+        "pump_8":  {"pin": 24, "name": "Pump 8",  "value": None, "volume_ml": 0},
+        "pump_9":  {"pin": 9,  "name": "Pump 9",  "value": None, "volume_ml": 0},
+        "pump_10": {"pin": 8,  "name": "Pump 10", "value": None, "volume_ml": 0},
+        "pump_11": {"pin": 12, "name": "Pump 11", "value": None, "volume_ml": 0},
+        "pump_12": {"pin": 26, "name": "Pump 12", "value": None, "volume_ml": 0},
+        "pump_13": {"pin": 25, "name": "Pump 13", "value": None, "volume_ml": 0},
         "pump_14": {"pin": 7,  "name": "Pump 14", "value": None, "volume_ml": 0},
-        "pump_15": {"pin": 8,  "name": "Pump 15", "value": None, "volume_ml": 0},
-        "pump_16": {"pin": 9,  "name": "Pump 16", "value": None, "volume_ml": 0},
+        "pump_15": {"pin": 16, "name": "Pump 15", "value": None, "volume_ml": 0},
+        "pump_16": {"pin": 21, "name": "Pump 16", "value": None, "volume_ml": 0},
     }
 
     def __init__(self):

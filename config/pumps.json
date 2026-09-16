@@ -1,20 +1,20 @@
 {
   "pump_1": {
-    "pin": 17,
+    "pin": 4,
     "name": "Pump 1",
     "value": "gin",
     "volume_ml": 450.0,
     "flow_rate_ml_per_sec": 1.67
   },
   "pump_2": {
-    "pin": 27,
+    "pin": 15,
     "name": "Pump 2",
     "value": "tonic",
     "volume_ml": 850.0,
     "flow_rate_ml_per_sec": 1.67
   },
   "pump_3": {
-    "pin": 22,
+    "pin": 27,
     "name": "Pump 3",
     "value": "rum",
     "volume_ml": 625.0,
@@ -28,63 +28,63 @@
     "flow_rate_ml_per_sec": 1.67
   },
   "pump_5": {
-    "pin": 24,
+    "pin": 14,
     "name": "Pump 5",
     "value": "vodka",
     "volume_ml": 750,
     "flow_rate_ml_per_sec": 1.67
   },
   "pump_6": {
-    "pin": 25,
+    "pin": 17,
     "name": "Pump 6",
     "value": "oj",
     "volume_ml": 1000,
     "flow_rate_ml_per_sec": 1.67
   },
   "pump_7": {
-    "pin": 12,
+    "pin": 22,
     "name": "Pump 7",
     "value": "tequila",
     "volume_ml": 850.0,
     "flow_rate_ml_per_sec": 1.67
   },
   "pump_8": {
-    "pin": 16,
+    "pin": 24,
     "name": "Pump 8",
     "value": "margarita_mix",
     "volume_ml": 775.0,
     "flow_rate_ml_per_sec": 1.67
   },
   "pump_9": {
-    "pin": 4,
+    "pin": 9,
     "name": "Pump 9",
     "value": null,
     "volume_ml": 0,
     "flow_rate_ml_per_sec": 1.67
   },
   "pump_10": {
-    "pin": 21,
+    "pin": 8,
     "name": "Pump 10",
     "value": null,
     "volume_ml": 0,
     "flow_rate_ml_per_sec": 1.67
   },
   "pump_11": {
-    "pin": 26,
+    "pin": 12,
     "name": "Pump 11",
     "value": null,
     "volume_ml": 0,
     "flow_rate_ml_per_sec": 1.67
   },
   "pump_12": {
-    "pin": 14,
+    "pin": 26,
     "name": "Pump 12",
     "value": null,
     "volume_ml": 0,
     "flow_rate_ml_per_sec": 1.67
   },
   "pump_13": {
-    "pin": 15,
+    "pin": 25,
     "name": "Pump 13",
     "value": null,
     "volume_ml": 0,
@@ -98,14 +98,14 @@
     "flow_rate_ml_per_sec": 1.67
   },
   "pump_15": {
-    "pin": 8,
+    "pin": 16,
     "name": "Pump 15",
     "value": null,
     "volume_ml": 0,
     "flow_rate_ml_per_sec": 1.67
   },
   "pump_16": {
-    "pin": 9,
+    "pin": 21,
     "name": "Pump 16",
     "value": null,
     "volume_ml": 0,

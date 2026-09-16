@@ -44,10 +44,10 @@ FOOTER_H    = 36
 # ─────────────────────────────────────────
 #  Button GPIO pins
 # ─────────────────────────────────────────
-BTN_UP     = 5
-BTN_DOWN   = 6
-BTN_SELECT = 13
-BTN_BACK   = 19
+BTN_UP     = 13
+BTN_DOWN   = 19
+BTN_SELECT = 6
+BTN_BACK   = 5
 
 SIMULATION = False
 
